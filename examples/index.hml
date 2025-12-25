@@ -1,0 +1,14 @@
+<window id="main_window" title="C-WebUI Demo">
+    
+    <container id="sidebar">
+        <button id="btn_home">Inicio</button>
+        <button id="btn_files">Arquivos</button>
+        <button id="btn_settings">Configuracoes</button>
+    </container>
+
+    <container id="content_area">
+        <label id="main_title">Bem-vindo ao C-WebUI</label>
+        <button id="btn_action">Clique Aqui</button>
+    </container>
+
+</window>
