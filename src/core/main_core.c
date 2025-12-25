@@ -1,8 +1,8 @@
 #include "cwebui/cwebui.h"
 #include <stdio.h>
 #include <string.h>
+#include <SDL2/SDL.h>
 
-/* Estado Global da Biblioteca */
 typedef struct {
     CWidget widgets[256];
     int widget_count;
@@ -11,15 +11,19 @@ typedef struct {
 
 static CWebUI_Context ctx;
 
-/* Inicializa o estado interno */
 void cwebui_init() {
     ctx.widget_count = 0;
     ctx.is_running = false;
     memset(ctx.widgets, 0, sizeof(ctx.widgets));
-    printf("[C-WebUI] Core inicializado com sucesso.\n");
+    cwebui_init_graphics(800, 600, "C-WebUI Engine v0.1");
 }
 
-/* Busca um widget no pool pelo seu ID único */
+void cwebui_register_widget(CWidget w) {
+    if (ctx.widget_count < 256) {
+        ctx.widgets[ctx.widget_count++] = w;
+    }
+}
+
 CWidget* cwebui_get_widget_by_id(const char* id) {
     for (int i = 0; i < ctx.widget_count; i++) {
         if (strcmp(ctx.widgets[i].id, id) == 0) {
@@ -29,45 +33,52 @@ CWidget* cwebui_get_widget_by_id(const char* id) {
     return NULL;
 }
 
-/* Busca widgets por Tag (ex: todos os <button>) */
-void cwebui_apply_style_to_tag(const char* tag, CStyle style) {
+void cwebui_sync_styles() {
+    CStyleMap* style_sheet;
+    int style_count = cwebui_get_style_sheet(&style_sheet);
+
     for (int i = 0; i < ctx.widget_count; i++) {
-        if (strcmp(ctx.widgets[i].tag, tag) == 0) {
-            ctx.widgets[i].style = style;
+        CWidget* w = &ctx.widgets[i];
+        for (int j = 0; j < style_count; j++) {
+            CStyleMap* s = &style_sheet[j];
+            if (s->selector[0] == '#' && strcmp(&s->selector[1], w->id) == 0) {
+                w->style = s->style;
+            } else if (strcmp(s->selector, w->tag) == 0) {
+                w->style = s->style;
+            }
         }
     }
 }
 
-/* * FUNÇÃO DE SINCRONIZAÇÃO (The Glue)
- * Esta função deve ser chamada após o carregamento do HML e CSS.
- * Ela percorre a lista de widgets e aplica os estilos extraídos.
- */
-void cwebui_sync_styles() {
-    printf("[C-WebUI] Sincronizando estilos HML <-> CSS...\n");
-    // Futuramente: Iterar sobre um mapa de seletores CSS e aplicar aos widgets
-}
-
-/* Loop Principal da GUI */
 void cwebui_run() {
     ctx.is_running = true;
-    printf("[C-WebUI] Entrando no MainLoop...\n");
+    SDL_Event event;
 
     while (ctx.is_running) {
-        /* 1. Processar Input (Mouse/Teclado) */
-        
-        /* 2. Atualizar Lógica de Layout */
-        
-        /* 3. Renderizar Widgets */
-        // Para cada widget em ctx.widgets: render_widget(widget);
+        int mx, my;
+        // Removido o uint32_t mouse_state para evitar o warning
+        SDL_GetMouseState(&mx, &my);
 
-        /* Simulação de saída para evitar loop infinito no teste inicial */
-        ctx.is_running = false; 
-    }
-}
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) ctx.is_running = false;
+            
+            if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
+                for (int i = 0; i < ctx.widget_count; i++) {
+                    CWidget* w = &ctx.widgets[i];
+                    if (mx >= w->x && mx <= w->x + w->width && my >= w->y && my <= w->y + w->height) {
+                        if (w->onclick) w->onclick();
+                    }
+                }
+            }
+        }
 
-/* Função para registrar novos widgets no pool (usada pelo HML Parser) */
-void cwebui_register_widget(CWidget w) {
-    if (ctx.widget_count < 256) {
-        ctx.widgets[ctx.widget_count++] = w;
+        for (int i = 0; i < ctx.widget_count; i++) {
+            CWidget* w = &ctx.widgets[i];
+            w->is_hovered = (mx >= w->x && mx <= w->x + w->width && my >= w->y && my <= w->y + w->height);
+        }
+
+        cwebui_render_all(ctx.widgets, ctx.widget_count);
+        SDL_Delay(16);
     }
+    cwebui_cleanup_graphics();
 }
