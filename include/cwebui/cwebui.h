@@ -28,4 +28,8 @@ void cwebui_load_hml(const char* path);
 void cwebui_load_css(const char* path);
 void cwebui_run();
 
+void cwebui_init_graphics(int width, int height, const char* title);
+void cwebui_render_all(CWidget* widgets, int count);
+void cwebui_cleanup_graphics();
+
 #endif
